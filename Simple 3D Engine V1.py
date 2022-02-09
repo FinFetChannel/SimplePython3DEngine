@@ -17,6 +17,7 @@ def main():
     # points = np.asarray([[1, 1, 1, 1, 1], [4, 2, 0, 1, 1], [1, .5, 3, 1, 1]])
     # triangles = np.asarray([[0,1,2]])
     points, triangles =  read_obj('teapot.obj')
+    color_scale = 230/np.max(np.abs(points))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
     
@@ -40,7 +41,7 @@ def main():
         for index in np.argsort(z_order):
             if z_order[index] == 9999: break
             triangle = [points[triangles[index][0]][3:], points[triangles[index][1]][3:], points[triangles[index][2]][3:]]
-            color = shade[index]*np.abs(points[triangles[index][0]][:3])*45 +25
+            color = shade[index]*np.abs(points[triangles[index][0]][:3])*color_scale +25
             pg.draw.polygon(surf, color, triangle)                
 
         screen.blit(surf, (0,0)); pg.display.update()
