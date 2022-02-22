@@ -18,7 +18,6 @@ def main():
     frameblue = np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
     texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
-    z_buffer = np.ones((SCREEN_W, SCREEN_H))
 
     points = 10*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
                             [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
@@ -48,8 +47,11 @@ def main():
         
         project_points(points, camera)
         frame = frameblue.copy()
-        z_buffer = z_buffer + 999999 #start with some big value
-        draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, color_scale, texture_coord, texture_map, texture)
+
+        z_buffer = np.ones((SCREEN_W, SCREEN_H)) + 999999 #start with some big value
+
+        draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, texture_coord, texture_map, texture)
+        
         surf = pg.surfarray.make_surface(frame)
 
         screen.blit(surf, (0,0)); pg.display.update()
@@ -190,8 +192,8 @@ def read_obj(fileName):
     return np.asarray(vertices), np.asarray(triangles)
 
 @njit()
-def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, color_scale, texture_coord, texture_map, texture):
-    text_size = [len(texture), len(texture[0])]
+def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, texture_coord, texture_map, texture):
+    text_size = [len(texture)-1, len(texture[0])-1]
     for index in range(len(triangles)):
         
         triangle = triangles[index]
@@ -212,7 +214,8 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, color_
         yys = [points[triangle[0]][3:5][1],  points[triangle[1]][3:5][1],  points[triangle[2]][3:5][1]]
 
         # check valid values
-        if (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
+        # if (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
+        if (((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
                                                  (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
                                                  (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):            
             # calculate shading, normalize, dot and to 0 - 1 range
@@ -223,50 +226,54 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, color_
             point2 = list(points[triangle[2]][3:])
 
             triangle_text = texture_map[index]
-            text0 = texture_coord[triangle_text[0]]/point0[2] # attempted perpective correct
-            text1 = texture_coord[triangle_text[1]]/point1[2]
-            text2 = texture_coord[triangle_text[2]]/point2[2]
+            text0 = texture_coord[triangle_text[0]]
+            text1 = texture_coord[triangle_text[1]]
+            text2 = texture_coord[triangle_text[2]]
 
-            proj_points = np.asarray([point0[:2], point1[:2], point2[:2]])
-            color0 = np.abs(points[triangles[index][0]][:3])*color_scale + 25
-            color1 = np.abs(points[triangles[index][1]][:3])*color_scale + 25
-            color2 = np.abs(points[triangles[index][2]][:3])*color_scale + 25
+            proj_points = np.asarray([point0, point1, point2])
+            text_points = np.asarray([list(text0), list(text1), list(text2)])
 
             sorted_y = proj_points[:,1].argsort()
-            x_start, y_start = proj_points[sorted_y[0]]
-            x_middle, y_middle = proj_points[sorted_y[1]]
-            x_stop, y_stop = proj_points[sorted_y[2]]
+            x_start, y_start, z_start = proj_points[sorted_y[0]]
+            x_middle, y_middle, z_middle = proj_points[sorted_y[1]]
+            x_stop, y_stop, z_stop = proj_points[sorted_y[2]]
             
             slope_1 = (x_stop - x_start)/(y_stop - y_start + 1e-16)
             slope_2 = (x_middle - x_start)/(y_middle - y_start + 1e-16)
             slope_3 = (x_stop - x_middle)/(y_stop - y_middle + 1e-16)
-
-            # barycentric denominator, based on https://codeplea.com/triangular-interpolation
-            denominator = (point1[1] - point2[1])*(point0[0] - point2[0]) + (point2[0] - point1[0])*(point0[1] - point2[1])+1e-16
+            
+            slope_z1 = (z_stop - z_start)/(y_stop - y_start + 1e-16)
+            slope_z2 = (z_middle - z_start)/(y_middle - y_start + 1e-16)
+            slope_z3 = (z_stop - z_middle)/(y_stop - y_middle + 1e-16)
 
             for y in range(max(0, y_start), min(SCREEN_H, y_stop)):
                 x1 = x_start + int((y-y_start)*slope_1)
+                z1 = z_start + int((y-y_start)*slope_z1)
+                uv_inter1 = text_points[sorted_y[0]] + (text_points[sorted_y[2]] - text_points[sorted_y[0]])*(y-y_start)/(y_stop-y_start+1e-16)
                 if y < y_middle:
                     x2 = x_start + int((y-y_start)*slope_2)
+                    z2 = z_start + int((y-y_start)*slope_z2)
+                    uv_inter2 = text_points[sorted_y[0]] + (text_points[sorted_y[1]] - text_points[sorted_y[0]])*(y-y_start)/(y_middle-y_start+1e-16)
+
                 else:
                     x2 = x_middle + int((y-y_middle)*slope_3)
-                minx, maxx = max(0, min(x1, x2, SCREEN_W)), min(SCREEN_W, max(0, x1,x2))
+                    z2 = z_middle + int((y-y_middle)*slope_z3)
+                    uv_inter2 = text_points[sorted_y[1]] + (text_points[sorted_y[2]] - text_points[sorted_y[1]])*(y-y_middle)/(y_stop - y_middle+1e-16)
+
+                if x1 > x2:
+                    x1, x2 = x2, x1
+                    z1, z2 = z2, z1
+                    uv_inter1, uv_inter2 = uv_inter2, uv_inter1
+                xx1, xx2 = max(0, min(x1, SCREEN_W)), max(0, min(x2, SCREEN_W))
                 
-                for x in range(minx, maxx):
-                    # barycentric weights
-                    w0 = ((point1[1]-point2[1])*(x - point2[0]) + (point2[0]-point1[0])*(y - point2[1]))/denominator
-                    w1 = ((point2[1]-point0[1])*(x - point2[0]) + (point0[0]-point2[0])*(y - point2[1]))/denominator
-                    w2 = 1 - w0 - w1
+                for x in range(xx1, xx2):
+                    
+                    uv = uv_inter1 + (uv_inter2 - uv_inter1)*(x - x1)/(x2 - x1 + 1e-16)
+                    z = z1 + (z2 - z1)*(x - x1)/(x2 - x1 + 1e-16)
 
-                    color = w0*color0 + w1*color1 + w2*color2
-
-                    #ww = w0*point0[2] + w1*point1[2]+ w2*point2[2]
-                    ww = 1/(w0/point0[2] + w1/point1[2] + w2/point2[2] +1e-16) # attempted perpective correct
-                    u = ((w0*text0[0] + w1*text1[0] + w2*text2[0])*ww)%1 # attempted perpective correct
-                    v = ((w0*text0[1] + w1*text1[1] + w2*text2[1])*ww)%1
-                    if ww < z_buffer[x, y]:
-                        z_buffer[x, y] = ww
-                        frame[x, y] = shade*(color + texture[int(u*text_size[0])][int(v*text_size[1])])/2
+                    if z < z_buffer[x, y]:
+                        z_buffer[x, y] = z
+                        frame[x, y] = shade*texture[int(uv[0]*text_size[0])][int(uv[1]*text_size[1])]
             
 
 if __name__ == '__main__':
