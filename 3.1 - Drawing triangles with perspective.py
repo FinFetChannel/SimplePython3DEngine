@@ -55,7 +55,7 @@ while running:
     uv_stop = texture_uv[sorted_y[2]]*z_stop
     uv_slope_1, uv_slope_2, uv_slope_3 = get_slopes(uv_start, uv_middle, uv_stop, y_start, y_middle, y_stop)
 
-    for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop))):
+    for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop+1))):
         delta_y = y - y_start
         x1 = x_start + int(delta_y*x_slope_1)
         z1 = z_start + delta_y*z_slope_1
@@ -81,7 +81,7 @@ while running:
         uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32)
         z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
 
-        for x in range(max(0, int(x1)), min(SCREEN_W, int(x2))):
+        for x in range(max(0, int(x1)), min(SCREEN_W, int(x2+1))):
             z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
             uv = (uv1 + (x - x1)*uv_slope)*z # multiply by z to go back to uv space
             shade = 1 - z/max_z
@@ -109,7 +109,7 @@ while running:
     uv_slope_2 = (uv_middle - uv_start)/(y_middle - y_start + 1e-16)
     uv_slope_3 = (uv_stop - uv_middle)/(y_stop - y_middle + 1e-16)
 
-    for y in range(y_start, y_stop):
+    for y in range(y_start, y_stop+1):
 
         x1 = x_start + int((y-y_start)*x_slope_1)
         uv1 = uv_start + (y-y_start)*uv_slope_1
@@ -129,7 +129,7 @@ while running:
 
         uv_slope = (uv2 - uv1)/(x2 - x1 +1e-16)
 
-        for x in range(x1, x2):
+        for x in range(x1, x2+1):
             uv = uv1 + (x - x1)*uv_slope
             u = int(uv[0]*text_size[0])%text_size[0]
             v = int(uv[1]*text_size[1])%text_size[1]
