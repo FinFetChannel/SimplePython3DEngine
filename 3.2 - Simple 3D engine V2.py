@@ -17,7 +17,8 @@ def main():
     frameblue = np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
 
-    textured = False
+    # textured = False
+    # points, triangles =  read_obj('obj models/teapot.obj')
     # points, triangles =  read_obj('obj models/mountains.obj')
     # points, triangles =  read_obj('obj models/cube.obj')
     # points, triangles =  read_obj('obj models/finfet.obj')
@@ -78,7 +79,7 @@ def movement(camera, elapsed_time):
         p_mouse = pg.mouse.get_pos()
         camera[3] = (camera[3] + 10*elapsed_time*np.clip((p_mouse[0]-SCREEN_W/2)/SCREEN_W, -0.2, .2))%(2*np.pi)
         camera[4] = camera[4] + 10*elapsed_time*np.clip((p_mouse[1]-SCREEN_H/2)/SCREEN_H, -0.2, .2)
-        camera[4] = np.clip(camera[4], -1.5, 1.5)
+        camera[4] = np.clip(camera[4], -1.57, 1.57) # limit to +-180°
     
     pressed_keys = pg.key.get_pressed()
 
