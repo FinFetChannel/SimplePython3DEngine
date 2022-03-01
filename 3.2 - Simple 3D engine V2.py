@@ -18,8 +18,9 @@ def main():
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
 
     # textured = False
-    # points, triangles =  read_obj_no_texture('obj models/mountains.obj')
-    # points, triangles =  read_obj_no_texture('obj models/cube.obj')
+    # points, triangles =  read_obj('obj models/mountains.obj')
+    # points, triangles =  read_obj('obj models/cube.obj')
+    # points, triangles =  read_obj('obj models/finfet.obj')
     
     textured = True
     points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
