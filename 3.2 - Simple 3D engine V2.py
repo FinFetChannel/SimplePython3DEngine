@@ -18,8 +18,8 @@ def main():
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
 
     # textured = False
-    # points, triangles =  read_obj_no_texture('mountains.obj')
-    # points, triangles =  read_obj_no_texture('cube.obj')
+    # points, triangles =  read_obj_no_texture('obj models/mountains.obj')
+    # points, triangles =  read_obj_no_texture('obj models/cube.obj')
     
     textured = True
     points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
@@ -29,16 +29,16 @@ def main():
     texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
     texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('cube text.obj', 1)
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cube text.obj', 1)
 
-    # points, triangles, texture_uv, texture_map =  read_obj('Babycrocodile.obj', 1)
-    # texture = pg.surfarray.array3d(pg.image.load('BabyCrocodileGreen.png'))
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/Babycrocodile.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('obj models/BabyCrocodileGreen.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('cottage_obj.obj', 1)
-    # texture = pg.surfarray.array3d(pg.image.load('cottage_diffuse.png'))
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cottage_obj.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('obj models/cottage_diffuse.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('ah64d.obj', 1)
-    # texture = pg.surfarray.array3d(pg.image.load('ah64.png'))
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/ah64d.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('obj models/ah64.png'))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
     

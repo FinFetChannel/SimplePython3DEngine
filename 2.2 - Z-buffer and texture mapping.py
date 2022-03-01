@@ -19,16 +19,13 @@ def main():
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
     texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
-    points = 10*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
+    points = 10.*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
                             [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
     
     texture_coord = np.asarray([[0,1], [1,1], [0,0], [1,0]])
 
     triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
     texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
-    #points, triangles =  read_obj('mountains.obj')
-
-    color_scale = 230/np.max(np.abs(points))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
     

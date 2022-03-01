@@ -16,7 +16,7 @@ def main():
 
     # points = np.asarray([[1, 1, 1, 1, 1], [4, 2, 0, 1, 1], [1, .5, 3, 1, 1]])
     # triangles = np.asarray([[0,1,2]])
-    points, triangles =  read_obj('teapot.obj')
+    points, triangles =  read_obj('obj models/teapot.obj')
     color_scale = 230/np.max(np.abs(points))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
