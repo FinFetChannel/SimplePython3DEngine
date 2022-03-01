@@ -3,7 +3,6 @@ import numpy as np
 from numba import njit
 
 SCREEN_W, SCREEN_H = 800, 600
-SCALE = 2
 FOV_V = np.pi/4 # 45 degrees vertical fov
 FOV_H = FOV_V*SCREEN_W/SCREEN_H
 SKY_BLUE = np.asarray([50,127,200]).astype('uint8')
@@ -17,16 +16,29 @@ def main():
     surf = pg.surface.Surface((SCREEN_W, SCREEN_H))
     frameblue = np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
-    texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
+    # textured = False
+    # points, triangles =  read_obj_no_texture('mountains.obj')
+    # points, triangles =  read_obj_no_texture('cube.obj')
+    
+    textured = True
     points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
                             [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
-    
     texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
-
     triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
     texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
-    #points, triangles =  read_obj('mountains.obj')
+    texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
+
+    # points, triangles, texture_uv, texture_map =  read_obj('cube text.obj', 1)
+
+    # points, triangles, texture_uv, texture_map =  read_obj('Babycrocodile.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('BabyCrocodileGreen.png'))
+
+    # points, triangles, texture_uv, texture_map =  read_obj('cottage_obj.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('cottage_diffuse.png'))
+
+    # points, triangles, texture_uv, texture_map =  read_obj('ah64d.obj', 1)
+    # texture = pg.surfarray.array3d(pg.image.load('ah64.png'))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
     
@@ -42,18 +54,22 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT: running = False
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE: running = False
+            if event.type == pg.KEYDOWN and event.key == pg.K_DELETE:
+                camera = np.asarray([13, 0.5, 2, 3.3, 0]) # reset camera
+        
+        frame = frameblue.copy() # fill with color
+        z_buffer = np.ones((SCREEN_W, SCREEN_H)) + 999999 # start with some big value
         
         project_points(points, camera)
-        frame = frameblue.copy()
-
-        z_buffer = np.ones((SCREEN_W, SCREEN_H)) + 999999 #start with some big value
-
-        draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, texture_uv, texture_map, texture)
+        if textured:
+            draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, texture_uv, texture_map, texture)
+        else:
+            draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer)
         
         surf = pg.surfarray.make_surface(frame)
         screen.blit(surf, (0,0)); pg.display.update()
         pg.display.set_caption(str(round(1/(elapsed_time+1e-16), 1)) + ' ' + str(camera))
-        movement(camera, elapsed_time*10)
+        movement(camera, min(elapsed_time*10, 0.3))
 
 def movement(camera, elapsed_time):
 
@@ -87,15 +103,65 @@ def movement(camera, elapsed_time):
         camera[0] -= elapsed_time*np.sin(camera[3])
         camera[2] += elapsed_time*np.cos(camera[3])
 
+# read wavefront models with or without textures, supports triangles and quads (turned into triangles)
+def read_obj(fileName, texture=False):
+    vertices, triangles = [], []
+
+    if texture:
+        texture_uv = []
+        texture_map = []
+
+    with open(fileName) as f:
+        for line in f.readlines():
+            if line[:2] == "v ":
+                vertices.append(line[2:].split() + [1,1,1])
+
+            elif texture and line[:3] == "vt ":
+                texture_uv.append(line[3:].split())
+
+            elif line[0] == "f":
+                splitted = line[2:].split()
+                if texture:
+                    p0 = splitted[0].split("/")
+                    p1 = splitted[1].split("/")
+                    p2 = splitted[2].split("/")
+                    
+                    triangles.append([p0[0], p1[0], p2[0]])
+                    texture_map.append([p0[1], p1[1], p2[1]])
+                    
+                    if len(splitted) == 4:
+                        p3 = splitted[3].split("/")
+                        triangles.append([p0[0], p2[0], p3[0]])
+                        texture_map.append([p0[1], p2[1], p3[1]])
+
+                else:
+                    triangles.append([splitted[0], splitted[1], splitted[2]])
+                    if len(splitted) == 4:
+                        triangles.append([splitted[0], splitted[2], splitted[3]])              
+
+    vertices = np.asarray(vertices).astype(float)
+    triangles = np.asarray(triangles).astype(int) - 1 # adjust indexes to start with 0
+
+    if texture:
+        texture_uv = np.asarray(texture_uv).astype(float)
+        texture_uv[:,1] = 1 - texture_uv[:,1] # apparently obj textures are upside down
+        texture_map = np.asarray(texture_map).astype(int) - 1 # adjust indexes to start with 0
+        
+        return vertices, triangles, texture_uv, texture_map
+
+    else:
+        return vertices, triangles
 
 @njit()
 def project_points(points, camera):
 
     cos_hor = np.cos(-camera[3]+np.pi/2)
     sin_hor = np.sin(-camera[3]+np.pi/2)
+    
     cos_ver = np.cos(-camera[4])
     sin_ver = np.sin(-camera[4])
-    hor_fov_adjust = 0.5*SCREEN_W/ np.tan(FOV_H * 0.5)
+
+    hor_fov_adjust = 0.5*SCREEN_W/ np.tan(FOV_H * 0.5) 
     ver_fov_adjust = 0.5*SCREEN_H/ np.tan(FOV_V * 0.5)
     
     for point in points:
@@ -113,7 +179,7 @@ def project_points(points, camera):
         new_z = translate[1]*sin_ver + translate[2]*cos_ver
         translate[1], translate[2] = new_y, new_z
         
-        if translate[2] <  0.001 and translate[2] >  - 0.001: # jump over 0 to avoid zero division
+        if translate[2] <  0.001 and translate[2] >  - 0.001: # jump over 0 to avoid zero division ¯\_(ツ)_/¯
             translate[2] = - 0.001
         point[3] = int(-hor_fov_adjust*translate[0]/translate[2] + 0.5*SCREEN_W)
         point[4] = int(-ver_fov_adjust*translate[1]/translate[2] + 0.5*SCREEN_H)
@@ -143,11 +209,12 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
         CameraRay = CameraRay/points[triangle[0]][5]
 
         # get projected 2d points for crude filtering of offscreen triangles
-        xxs = [points[triangle[0]][3:5][0],  points[triangle[1]][3:5][0],  points[triangle[2]][3:5][0]]
-        yys = [points[triangle[0]][3:5][1],  points[triangle[1]][3:5][1],  points[triangle[2]][3:5][1]]
+        xxs = [points[triangle[0]][3],  points[triangle[1]][3],  points[triangle[2]][3]]
+        yys = [points[triangle[0]][4],  points[triangle[1]][4],  points[triangle[2]][4]]
+        z_min = min([points[triangle[0]][5],  points[triangle[1]][5],  points[triangle[2]][5]])
 
         # check valid values
-        if (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
+        if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
                                                  (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
                                                  (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):            
             
@@ -183,7 +250,7 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
             uv_stop = text_points[sorted_y[2]]*z_stop
             uv_slope_1, uv_slope_2, uv_slope_3 = get_slopes(uv_start, uv_middle, uv_stop, y_start, y_middle, y_stop)
 
-            for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop))):
+            for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop+1))):
                 delta_y = y - y_start
                 x1 = x_start + int(delta_y*x_slope_1)
                 z1 = z_start + delta_y*z_slope_1
@@ -209,7 +276,7 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
                 uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32)
                 z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
 
-                for x in range(max(0, int(x1)), min(SCREEN_W, int(x2))):
+                for x in range(max(0, int(x1)), min(SCREEN_W, int(x2+1))):
                     z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
                     if z < z_buffer[x][y]: # check z buffer
                         uv = (uv1 + (x - x1)*uv_slope)*z # multiply by z to go back to uv space
@@ -219,12 +286,96 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
 
 @njit()
 def get_slopes(num_start, num_middle, num_stop, den_start, den_middle, den_stop):
-    slope_1 = (num_stop - num_start)/(den_stop - den_start + 1e-32)
+    slope_1 = (num_stop - num_start)/(den_stop - den_start + 1e-32) # + 1e-32 avoid zero division ¯\_(ツ)_/¯
     slope_2 = (num_middle - num_start)/(den_middle - den_start + 1e-32)
     slope_3 = (num_stop - num_middle)/(den_stop - den_middle + 1e-32)
 
     return slope_1, slope_2, slope_3
 
+@njit()
+def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
+    color_scale = 230/np.max(np.abs(points[:,:3]))
+
+    for index in range(len(triangles)):
+        
+        triangle = triangles[index]
+
+        # Use Cross-Product to get surface normal
+        vet1 = points[triangle[1]][:3]  - points[triangle[0]][:3]
+        vet2 = points[triangle[2]][:3] - points[triangle[0]][:3]
+
+        # backface culling with dot product between normal and camera ray
+        normal = np.cross(vet1, vet2)
+        normal = normal/np.sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
+        
+        CameraRay = points[triangle[0]][:3] - camera[:3]
+        CameraRay = CameraRay/points[triangle[0]][5]
+
+        # get projected 2d points for crude filtering of offscreen triangles
+        xxs = [points[triangle[0]][3],  points[triangle[1]][3],  points[triangle[2]][3]]
+        yys = [points[triangle[0]][4],  points[triangle[1]][4],  points[triangle[2]][4]]
+        z_min = min([points[triangle[0]][5],  points[triangle[1]][5],  points[triangle[2]][5]])
+
+        # check valid values
+        if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
+                                                 (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
+                                                 (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):            
+            
+            # calculate shading, normalize, dot and to 0 - 1 range
+            shade = 0.5*dot_3d(light_dir, normal) + 0.5
+            color = shade*np.abs(points[triangles[index][0]][:3])*color_scale + 25
+
+            point0 = points[triangle[0]][3:]
+            point1 = points[triangle[1]][3:]
+            point2 = points[triangle[2]][3:]
+
+            proj_points = np.asarray([list(point0), list(point1), list(point2)])
+
+            sorted_y = proj_points[:,1].argsort()
+
+            x_start, y_start, z_start = proj_points[sorted_y[0]]
+            x_middle, y_middle, z_middle = proj_points[sorted_y[1]]
+            x_stop, y_stop, z_stop = proj_points[sorted_y[2]]
+
+            x_slope_1, x_slope_2, x_slope_3 = get_slopes(x_start, x_middle, x_stop, y_start, y_middle, y_stop)
+
+            # invert z for interpolation
+            z_start, z_middle, z_stop = 1/(z_start +1e-32), 1/(z_middle + 1e-32), 1/(z_stop +1e-32)
+            z_slope_1, z_slope_2, z_slope_3 = get_slopes(z_start, z_middle, z_stop, y_start, y_middle, y_stop)
+
+            for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop+1))):
+                delta_y = y - y_start
+                x1 = x_start + int(delta_y*x_slope_1)
+                z1 = z_start + delta_y*z_slope_1
+
+                if y < y_middle:
+                    x2 = x_start + int(delta_y*x_slope_2)
+                    z2 = z_start + delta_y*z_slope_2
+
+                else:
+                    delta_y = y - y_middle
+                    x2 = x_middle + int(delta_y*x_slope_3)
+                    z2 = z_middle + delta_y*z_slope_3
+                
+                # lower x should be on the left
+                if x1 > x2:
+                    x1, x2 = x2, x1
+                    z1, z2 = z2, z1
+                    
+                xx1, xx2 = max(0, min(SCREEN_W-1, int(x1))), max(0, min(SCREEN_W-1, int(x2+1)))
+                if xx1 != xx2:
+                    if min(z_buffer[xx1:xx2, y]) == 1000000:
+                        z_buffer[xx1:xx2, y] = 2/(z1 + z2)
+                        frame[xx1:xx2, y] = color
+                    else:
+                        z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
+                        for x in range(xx1, xx2):
+                            z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
+                            if z < z_buffer[x][y]: # check z buffer
+                                z_buffer[x][y] = z
+                                frame[x, y] = color
+                    
+    
 if __name__ == '__main__':
     main()
     pg.quit()
