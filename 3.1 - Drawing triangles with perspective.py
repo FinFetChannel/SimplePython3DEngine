@@ -78,7 +78,7 @@ while running:
             z1, z2 = z2, z1
             uv1, uv2 = uv2, uv1
 
-        uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32)
+        uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32) # + 1e-32 to avoid zero division ¯\_(ツ)_/¯
         z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
 
         for x in range(max(0, int(x1)), min(SCREEN_W, int(x2+1))):
@@ -97,17 +97,17 @@ while running:
     x_middle, y_middle, z_middle = offset_triangle[sorted_y[1]]
     x_stop, y_stop, z_stop = offset_triangle[sorted_y[2]]
 
-    x_slope_1 = (x_stop - x_start)/(y_stop - y_start + 1e-16)
-    x_slope_2 = (x_middle - x_start)/(y_middle - y_start + 1e-16)
-    x_slope_3 = (x_stop - x_middle)/(y_stop - y_middle + 1e-16)
+    x_slope_1 = (x_stop - x_start)/(y_stop - y_start + 1e-32)
+    x_slope_2 = (x_middle - x_start)/(y_middle - y_start + 1e-32)
+    x_slope_3 = (x_stop - x_middle)/(y_stop - y_middle + 1e-32)
 
     uv_start = texture_uv[sorted_y[0]]
     uv_middle = texture_uv[sorted_y[1]]
     uv_stop = texture_uv[sorted_y[2]]
 
-    uv_slope_1 = (uv_stop - uv_start)/(y_stop - y_start + 1e-16)
-    uv_slope_2 = (uv_middle - uv_start)/(y_middle - y_start + 1e-16)
-    uv_slope_3 = (uv_stop - uv_middle)/(y_stop - y_middle + 1e-16)
+    uv_slope_1 = (uv_stop - uv_start)/(y_stop - y_start + 1e-32)
+    uv_slope_2 = (uv_middle - uv_start)/(y_middle - y_start + 1e-32)
+    uv_slope_3 = (uv_stop - uv_middle)/(y_stop - y_middle + 1e-32)
 
     for y in range(y_start, y_stop+1):
 
@@ -127,7 +127,7 @@ while running:
             x1, x2 = x2, x1
             uv1, uv2 = uv2, uv1
 
-        uv_slope = (uv2 - uv1)/(x2 - x1 +1e-16)
+        uv_slope = (uv2 - uv1)/(x2 - x1 +1e-32)
 
         for x in range(x1, x2+1):
             uv = uv1 + (x - x1)*uv_slope
