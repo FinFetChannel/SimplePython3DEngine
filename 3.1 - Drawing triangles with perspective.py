@@ -23,7 +23,7 @@ texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
 texture_uv = np.asarray([[0,0.85], [1,0.85], [0.5,0]])
 
-text_size = [len(texture), len(texture[0])]
+text_size = [len(texture)-1, len(texture[0])-1]
 
 while running:
     for event in pg.event.get():
@@ -85,7 +85,7 @@ while running:
             z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
             uv = (uv1 + (x - x1)*uv_slope)*z # multiply by z to go back to uv space
             shade = 1 - z/max_z
-            if min(uv) >= 0 and max(uv) < 1: # don't render out of bounds
+            if min(uv) >= 0 and max(uv) <= 1: # don't render out of bounds
                 frame[x, y] = texture[int(uv[0]*text_size[0])][int(uv[1]*text_size[1])]*shade
 
     # offset triangle without perspective (affine)
