@@ -17,29 +17,29 @@ def main():
     frameblue = np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
     frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
 
-    # textured = False
+    textured = False
     # points, triangles =  read_obj('obj models/mountains.obj')
     # points, triangles =  read_obj('obj models/cube.obj')
     # points, triangles =  read_obj('obj models/finfet.obj')
     
     textured = True
-    points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
-                            [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
-    texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
-    triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
-    texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
-    texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
+    # points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
+    #                         [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
+    # texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
+    # triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
+    # texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
+    # texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cube text.obj', 1)
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cube text.obj', textured)
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/Babycrocodile.obj', 1)
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/Babycrocodile.obj', textured)
     # texture = pg.surfarray.array3d(pg.image.load('obj models/BabyCrocodileGreen.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cottage_obj.obj', 1)
+    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cottage_obj.obj', textured)
     # texture = pg.surfarray.array3d(pg.image.load('obj models/cottage_diffuse.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/ah64d.obj', 1)
-    # texture = pg.surfarray.array3d(pg.image.load('obj models/ah64.png'))
+    points, triangles, texture_uv, texture_map =  read_obj('obj models/ah64d.obj', textured)
+    texture = pg.surfarray.array3d(pg.image.load('obj models/ah64.png'))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
     
@@ -205,9 +205,7 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
         # backface culling with dot product between normal and camera ray
         normal = np.cross(vet1, vet2)
         normal = normal/np.sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
-        
-        CameraRay = points[triangle[0]][:3] - camera[:3]
-        CameraRay = CameraRay/points[triangle[0]][5]
+        CameraRay = (points[triangle[0]][:3] - camera[:3])/points[triangle[0]][5]
 
         # get projected 2d points for crude filtering of offscreen triangles
         xxs = [points[triangle[0]][3],  points[triangle[1]][3],  points[triangle[2]][3]]
@@ -215,23 +213,12 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
         z_min = min([points[triangle[0]][5],  points[triangle[1]][5],  points[triangle[2]][5]])
 
         # check valid values
-        if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
-                                                 (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
-                                                 (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):            
-            
-            # calculate shading, normalize, dot and to 0 - 1 range
-            shade = 0.5*dot_3d(light_dir, normal) + 0.5
+        if filter_triangles(z_min, normal, CameraRay, xxs, yys):
 
-            point0 = points[triangle[0]][3:]
-            point1 = points[triangle[1]][3:]
-            point2 = points[triangle[2]][3:]
+            shade = 0.5*dot_3d(light_dir, normal) + 0.5 #  directional lighting
 
-            text0 = texture_uv[texture_map[index][0]]
-            text1 = texture_uv[texture_map[index][1]]
-            text2 = texture_uv[texture_map[index][2]]
-
-            proj_points = np.asarray([list(point0), list(point1), list(point2)])
-            text_points = np.asarray([list(text0), list(text1), list(text2)])
+            proj_points = points[triangle][:,3:] #
+            uv_points = texture_uv[texture_map[index]]
 
             sorted_y = proj_points[:,1].argsort()
 
@@ -246,9 +233,9 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
             z_slope_1, z_slope_2, z_slope_3 = get_slopes(z_start, z_middle, z_stop, y_start, y_middle, y_stop)
 
             # uv coordinates multiplied by inverted z to account for perspective
-            uv_start = text_points[sorted_y[0]]*z_start 
-            uv_middle = text_points[sorted_y[1]]*z_middle
-            uv_stop = text_points[sorted_y[2]]*z_stop
+            uv_start = uv_points[sorted_y[0]]*z_start 
+            uv_middle = uv_points[sorted_y[1]]*z_middle
+            uv_stop = uv_points[sorted_y[2]]*z_stop
             uv_slope_1, uv_slope_2, uv_slope_3 = get_slopes(uv_start, uv_middle, uv_stop, y_start, y_middle, y_stop)
 
             for y in range(max(0, int(y_start)), min(SCREEN_H, int(y_stop+1))):
@@ -274,16 +261,18 @@ def draw_triangles(frame, points, triangles, camera, light_dir, z_buffer, textur
                     z1, z2 = z2, z1
                     uv1, uv2 = uv2, uv1
 
-                uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32)
-                z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
+                xx1, xx2 = max(0, min(SCREEN_W-1, int(x1))), max(0, min(SCREEN_W-1, int(x2+1)))
+                if xx1 != xx2:
+                    uv_slope = (uv2 - uv1)/(x2 - x1 + 1e-32)
+                    z_slope = (z2 - z1)/(x2 - x1 + 1e-32)
 
-                for x in range(max(0, int(x1)), min(SCREEN_W, int(x2+1))):
-                    z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
-                    if z < z_buffer[x][y]: # check z buffer
-                        uv = (uv1 + (x - x1)*uv_slope)*z # multiply by z to go back to uv space
-                        if min(uv) >= 0 and max(uv) <= 1: # don't render out of bounds
-                            z_buffer[x][y] = z
-                            frame[x, y] = shade*texture[int(uv[0]*text_size[0])][int(uv[1]*text_size[1])]
+                    for x in range(xx1, xx2):
+                        z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
+                        if z < z_buffer[x][y]: # check z buffer
+                            uv = (uv1 + (x - x1)*uv_slope)*z # multiply by z to go back to uv space
+                            if min(uv) >= 0 and max(uv) <= 1: # don't render out of bounds
+                                z_buffer[x][y] = z
+                                frame[x, y] = shade*texture[int(uv[0]*text_size[0])][int(uv[1]*text_size[1])]
 
 @njit()
 def get_slopes(num_start, num_middle, num_stop, den_start, den_middle, den_stop):
@@ -292,6 +281,17 @@ def get_slopes(num_start, num_middle, num_stop, den_start, den_middle, den_stop)
     slope_3 = (num_stop - num_middle)/(den_stop - den_middle + 1e-32)
 
     return slope_1, slope_2, slope_3
+
+@njit()
+def filter_triangles(z_min, normal, CameraRay, xxs, yys): #TODO replace filtering with proper clipping
+    if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and (
+        (xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
+        (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
+        (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):
+        return True
+
+    else:
+        return False
 
 @njit()
 def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
@@ -308,9 +308,7 @@ def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
         # backface culling with dot product between normal and camera ray
         normal = np.cross(vet1, vet2)
         normal = normal/np.sqrt(normal[0]*normal[0] + normal[1]*normal[1] + normal[2]*normal[2])
-        
-        CameraRay = points[triangle[0]][:3] - camera[:3]
-        CameraRay = CameraRay/points[triangle[0]][5]
+        CameraRay = (points[triangle[0]][:3] - camera[:3])/points[triangle[0]][5]
 
         # get projected 2d points for crude filtering of offscreen triangles
         xxs = [points[triangle[0]][3],  points[triangle[1]][3],  points[triangle[2]][3]]
@@ -318,20 +316,12 @@ def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
         z_min = min([points[triangle[0]][5],  points[triangle[1]][5],  points[triangle[2]][5]])
 
         # check valid values
-        if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and ((xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
-                                                 (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
-                                                 (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):            
+        if filter_triangles(z_min, normal, CameraRay, xxs, yys): 
             
-            # calculate shading, normalize, dot and to 0 - 1 range
-            shade = 0.5*dot_3d(light_dir, normal) + 0.5
+            shade = 0.5*dot_3d(light_dir, normal) + 0.5 # directional lighting
             color = shade*np.abs(points[triangles[index][0]][:3])*color_scale + 25
 
-            point0 = points[triangle[0]][3:]
-            point1 = points[triangle[1]][3:]
-            point2 = points[triangle[2]][3:]
-
-            proj_points = np.asarray([list(point0), list(point1), list(point2)])
-
+            proj_points = points[triangle][:,3:]
             sorted_y = proj_points[:,1].argsort()
 
             x_start, y_start, z_start = proj_points[sorted_y[0]]
@@ -358,9 +348,8 @@ def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
                     x2 = x_middle + int(delta_y*x_slope_3)
                     z2 = z_middle + delta_y*z_slope_3
                 
-                # lower x should be on the left
                 if x1 > x2:
-                    x1, x2 = x2, x1
+                    x1, x2 = x2, x1 # lower x should be on the left
                     z1, z2 = z2, z1
                     
                 xx1, xx2 = max(0, min(SCREEN_W-1, int(x1))), max(0, min(SCREEN_W-1, int(x2+1)))
@@ -374,8 +363,7 @@ def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
                             z = 1/(z1 + (x - x1)*z_slope + 1e-32) # retrive z
                             if z < z_buffer[x][y]: # check z buffer
                                 z_buffer[x][y] = z
-                                frame[x, y] = color
-                    
+                                frame[x, y] = color          
     
 if __name__ == '__main__':
     main()
