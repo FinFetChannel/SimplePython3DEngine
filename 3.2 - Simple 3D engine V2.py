@@ -14,20 +14,20 @@ def main():
     running = True
     clock = pg.time.Clock()
     surf = pg.surface.Surface((SCREEN_W, SCREEN_H))
-    frameblue = np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
-    frameblue[:,:,0], frameblue[:,:,1], frameblue[:,:,2]  = SKY_BLUE[0], SKY_BLUE[1], SKY_BLUE[2]
+    frame= np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
+    z_buffer = np.ones((SCREEN_W, SCREEN_H))
 
     # textured = False
     # points, triangles =  read_obj('obj models/teapot.obj')
     # points, triangles =  read_obj('obj models/mountains.obj')
-    # points, triangles =  read_obj('obj models/cube.obj')
     # points, triangles =  read_obj('obj models/finfet.obj')
     
-    textured = True
     # points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
     #                         [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
-    # texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
     # triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
+    
+    textured = True
+    # texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
     # texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
     # texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
@@ -59,8 +59,8 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_DELETE:
                 camera = np.asarray([13, 0.5, 2, 3.3, 0]) # reset camera
         
-        frame = frameblue.copy() # fill with color
-        z_buffer = np.ones((SCREEN_W, SCREEN_H)) + 999999 # start with some big value
+        frame[:,:,:] = SKY_BLUE
+        z_buffer[:,:] = 1e32 # start with some big value
         
         project_points(points, camera)
         if textured:
@@ -71,7 +71,7 @@ def main():
         surf = pg.surfarray.make_surface(frame)
         screen.blit(surf, (0,0)); pg.display.update()
         pg.display.set_caption(str(round(1/(elapsed_time+1e-16), 1)) + ' ' + str(camera))
-        movement(camera, min(elapsed_time*10, 0.3))
+        movement(camera, min(elapsed_time*10, 1))
 
 def movement(camera, elapsed_time):
 
@@ -79,7 +79,7 @@ def movement(camera, elapsed_time):
         p_mouse = pg.mouse.get_pos()
         camera[3] = (camera[3] + 10*elapsed_time*np.clip((p_mouse[0]-SCREEN_W/2)/SCREEN_W, -0.2, .2))%(2*np.pi)
         camera[4] = camera[4] + 10*elapsed_time*np.clip((p_mouse[1]-SCREEN_H/2)/SCREEN_H, -0.2, .2)
-        camera[4] = np.clip(camera[4], -1.57, 1.57) # limit to +-180°
+        camera[4] = np.clip(camera[4], -1.57, 1.57) # limit to +- 180°
     
     pressed_keys = pg.key.get_pressed()
 
@@ -106,45 +106,56 @@ def movement(camera, elapsed_time):
         camera[2] += elapsed_time*np.cos(camera[3])
 
 # read wavefront models with or without textures, supports triangles and quads (turned into triangles)
-def read_obj(fileName, texture=False):
+def read_obj(fileName, textured=False):
     vertices, triangles = [], []
 
-    if texture:
-        texture_uv = []
-        texture_map = []
+    if textured:
+        texture_uv, texture_map = [], []
 
     with open(fileName) as f:
         for line in f.readlines():
-            if line[:2] == "v ":
-                vertices.append(line[2:].split() + [1,1,1])
 
-            elif texture and line[:3] == "vt ":
-                texture_uv.append(line[3:].split())
+            splitted = line.split() # split the line in a list
 
-            elif line[0] == "f":
-                splitted = line[2:].split()
-                if texture:
-                    p0 = splitted[0].split("/")
+            if len(splitted) == 0: # nothing to do here
+                continue
+
+            if splitted[0] == "v": # vertices
+                vertices.append(splitted[1:4] + [1,1,1]) # aditional spaces for projection
+
+            elif textured and splitted[0] == "vt": # texture coordinates
+                texture_uv.append(splitted[1:3])
+
+
+            elif splitted[0] == "f": # Faces
+
+                if not textured:
+
+                    triangles.append([splitted[1], splitted[2], splitted[3]])
+
+                    if len(splitted) == 5: # quads, make additional triangle
+                        triangles.append([splitted[1], splitted[3], splitted[4]])              
+                else:
+
                     p1 = splitted[1].split("/")
                     p2 = splitted[2].split("/")
+                    p3 = splitted[3].split("/")
                     
-                    triangles.append([p0[0], p1[0], p2[0]])
-                    texture_map.append([p0[1], p1[1], p2[1]])
+                    triangles.append([p1[0], p2[0], p3[0]])
+                    texture_map.append([p1[1], p2[1], p3[1]])
                     
-                    if len(splitted) == 4:
-                        p3 = splitted[3].split("/")
-                        triangles.append([p0[0], p2[0], p3[0]])
-                        texture_map.append([p0[1], p2[1], p3[1]])
-
-                else:
-                    triangles.append([splitted[0], splitted[1], splitted[2]])
-                    if len(splitted) == 4:
-                        triangles.append([splitted[0], splitted[2], splitted[3]])              
-
+                    if len(splitted) == 5: # quads, make additional triangle
+                        
+                        p4 = splitted[4].split("/")
+                        
+                        triangles.append([p1[0], p3[0], p4[0]])
+                        texture_map.append([p1[1], p3[1], p4[1]])
+                
     vertices = np.asarray(vertices).astype(float)
     triangles = np.asarray(triangles).astype(int) - 1 # adjust indexes to start with 0
 
-    if texture:
+    if textured:
+
         texture_uv = np.asarray(texture_uv).astype(float)
         texture_uv[:,1] = 1 - texture_uv[:,1] # apparently obj textures are upside down
         texture_map = np.asarray(texture_map).astype(int) - 1 # adjust indexes to start with 0
@@ -157,8 +168,8 @@ def read_obj(fileName, texture=False):
 @njit()
 def project_points(points, camera):
 
-    cos_hor = np.cos(-camera[3]+np.pi/2)
-    sin_hor = np.sin(-camera[3]+np.pi/2)
+    cos_hor = np.cos(-camera[3]+np.pi/2) # add 90° to align with z axis
+    sin_hor = np.sin(-camera[3]+np.pi/2) # negative 
     
     cos_ver = np.cos(-camera[4])
     sin_ver = np.sin(-camera[4])
@@ -183,6 +194,7 @@ def project_points(points, camera):
         
         if translate[2] <  0.001 and translate[2] >  - 0.001: # jump over 0 to avoid zero division ¯\_(ツ)_/¯
             translate[2] = - 0.001
+
         point[3] = int(-hor_fov_adjust*translate[0]/translate[2] + 0.5*SCREEN_W)
         point[4] = int(-ver_fov_adjust*translate[1]/translate[2] + 0.5*SCREEN_H)
         point[5] = translate[2] # np.sqrt(translate[0]*translate[0] + translate[1]*translate[1] + translate[2]*translate[2])
@@ -285,10 +297,10 @@ def get_slopes(num_start, num_middle, num_stop, den_start, den_middle, den_stop)
 
 @njit()
 def filter_triangles(z_min, normal, CameraRay, xxs, yys): #TODO replace filtering with proper clipping
-    if z_min > 0 and (dot_3d(normal, CameraRay) < 0   and (
+    if z_min > 0 and dot_3d(normal, CameraRay) < 0   and (
         (xxs[0] >= -SCREEN_W and xxs[0] < 2*SCREEN_W and yys[0] >= -SCREEN_H and yys[0] < 2*SCREEN_H) or
         (xxs[1] >= -SCREEN_W and xxs[1] < 2*SCREEN_W and yys[1] >= -SCREEN_H and yys[1] < 2*SCREEN_H) or
-        (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H))):
+        (xxs[2] >= -SCREEN_W and xxs[2] < 2*SCREEN_W and yys[2] >= -SCREEN_H and yys[2] < 2*SCREEN_H)):
         return True
 
     else:
@@ -355,7 +367,7 @@ def draw_flat_triangles(frame, points, triangles, camera, light_dir, z_buffer):
                     
                 xx1, xx2 = max(0, min(SCREEN_W-1, int(x1))), max(0, min(SCREEN_W-1, int(x2+1)))
                 if xx1 != xx2:
-                    if min(z_buffer[xx1:xx2, y]) == 1000000:
+                    if min(z_buffer[xx1:xx2, y]) == 1e32:
                         z_buffer[xx1:xx2, y] = 2/(z1 + z2)
                         frame[xx1:xx2, y] = color
                     else:
