@@ -1,6 +1,6 @@
 # SimplePython3DEngine
 
-![Screenshot](capa 3d.png)
+![Screenshot]("capa 3d.png")
 
 A simple 3D Engine in Python
 
