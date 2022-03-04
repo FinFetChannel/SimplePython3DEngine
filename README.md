@@ -8,4 +8,4 @@ A simple 3D Engine in Python
 
 2 - Drawing triangles with Numba and z-buffer: https://www.youtube.com/watch?v=jg6SXm-dJsg
 
-3 - Drawing triangles with perspective and new projection: coming soon...
+3 - Drawing triangles with perspective and proper projection: https://www.youtube.com/watch?v=U2bPZLU3ntw
