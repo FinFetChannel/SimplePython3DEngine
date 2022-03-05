@@ -1,6 +1,7 @@
 import pygame as pg
 import numpy as np
 from numba import njit
+from objLoader import read_obj
 
 SCREEN_W, SCREEN_H = 800, 600
 FOV_V = np.pi/4 # 45 degrees vertical fov
@@ -17,29 +18,27 @@ def main():
     frame= np.ones((SCREEN_W, SCREEN_H, 3)).astype('uint8')
     z_buffer = np.ones((SCREEN_W, SCREEN_H))
 
-    # textured = False
-    # points, triangles =  read_obj('obj models/teapot.obj')
-    # points, triangles =  read_obj('obj models/mountains.obj')
-    # points, triangles =  read_obj('obj models/finfet.obj')
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/teapot.obj')
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/mountains.obj')
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/finfet.obj')
     
+    # textured = True
     # points = 10.1*np.asarray([[0, 0, 0, 1, 1, 1], [0, 1, 0, 1, 1, 1], [1, 1, 0, 1, 1, 1], [1, 0, 0, 1, 1, 1], 
     #                         [0, 0, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1], [1, 0, 1, 1, 1, 1]])
     # triangles = np.asarray([[0,1,2], [0,2,3],[3,2,6], [3,6,7], [1,5,6], [1,6,2], [0,3,7], [0,7,4], [1,0,4], [1,4,5], [6,5,4], [6,4,7]])
-    
-    textured = True
     # texture_uv = np.asarray([[0,1], [1,1], [0,0], [1,0]])
     # texture_map = np.asarray([[2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3], [2,0,1], [2,1,3],])
     # texture = pg.surfarray.array3d(pg.image.load('finfet.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cube text.obj', textured)
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/cube text.obj')
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/Babycrocodile.obj', textured)
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/Babycrocodile.obj')
     # texture = pg.surfarray.array3d(pg.image.load('obj models/BabyCrocodileGreen.png'))
 
-    # points, triangles, texture_uv, texture_map =  read_obj('obj models/cottage_obj.obj', textured)
+    # points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/cottage_obj.obj')
     # texture = pg.surfarray.array3d(pg.image.load('obj models/cottage_diffuse.png'))
 
-    points, triangles, texture_uv, texture_map =  read_obj('obj models/ah64d.obj', textured)
+    points, triangles, texture_uv, texture_map, textured =  read_obj('obj models/ah64d.obj')
     texture = pg.surfarray.array3d(pg.image.load('obj models/ah64.png'))
 
     camera = np.asarray([13, 0.5, 2, 3.3, 0])
@@ -105,65 +104,7 @@ def movement(camera, elapsed_time):
         camera[0] -= elapsed_time*np.sin(camera[3])
         camera[2] += elapsed_time*np.cos(camera[3])
 
-# read wavefront models with or without textures, supports triangles and quads (turned into triangles)
-def read_obj(fileName, textured=False):
-    vertices, triangles = [], []
 
-    if textured:
-        texture_uv, texture_map = [], []
-
-    with open(fileName) as f:
-        for line in f.readlines():
-
-            splitted = line.split() # split the line in a list
-
-            if len(splitted) == 0: # nothing to do here
-                continue
-
-            if splitted[0] == "v": # vertices
-                vertices.append(splitted[1:4] + [1,1,1]) # aditional spaces for projection
-
-            elif textured and splitted[0] == "vt": # texture coordinates
-                texture_uv.append(splitted[1:3])
-
-
-            elif splitted[0] == "f": # Faces
-
-                if not textured:
-
-                    triangles.append([splitted[1], splitted[2], splitted[3]])
-
-                    if len(splitted) == 5: # quads, make additional triangle
-                        triangles.append([splitted[1], splitted[3], splitted[4]])              
-                else:
-
-                    p1 = splitted[1].split("/")
-                    p2 = splitted[2].split("/")
-                    p3 = splitted[3].split("/")
-                    
-                    triangles.append([p1[0], p2[0], p3[0]])
-                    texture_map.append([p1[1], p2[1], p3[1]])
-                    
-                    if len(splitted) == 5: # quads, make additional triangle
-                        
-                        p4 = splitted[4].split("/")
-                        
-                        triangles.append([p1[0], p3[0], p4[0]])
-                        texture_map.append([p1[1], p3[1], p4[1]])
-                
-    vertices = np.asarray(vertices).astype(float)
-    triangles = np.asarray(triangles).astype(int) - 1 # adjust indexes to start with 0
-
-    if textured:
-
-        texture_uv = np.asarray(texture_uv).astype(float)
-        texture_uv[:,1] = 1 - texture_uv[:,1] # apparently obj textures are upside down
-        texture_map = np.asarray(texture_map).astype(int) - 1 # adjust indexes to start with 0
-        
-        return vertices, triangles, texture_uv, texture_map
-
-    else:
-        return vertices, triangles
 
 @njit()
 def project_points(points, camera):
